@@ -14,4 +14,5 @@ class Task(Base):
     created_at: Mapped[str] = mapped_column(DATETIME,
                                             default=datetime.now(),
                                             server_default=func.now())
+    due_at: Mapped[str] = mapped_column(DATETIME)
     completed_at: Mapped[str] = mapped_column(DATETIME)
