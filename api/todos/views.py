@@ -7,4 +7,3 @@ router = APIRouter()
 @router.get("/")
 async def get_all_tasks(session: AsyncSession = Depends(db_helper.session)):
     return await crud.get_all_tasks(session=session)
-
