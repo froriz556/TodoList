@@ -22,7 +22,7 @@ class DataBaseHelper:
         )
         return session
 
-    async def session_dependency(self) -> AsyncSession:
+    async def session_dependency(self) -> AsyncGenerator[AsyncSession, None]:
         async with self.session_factory() as session:
             yield session
             await session.close()

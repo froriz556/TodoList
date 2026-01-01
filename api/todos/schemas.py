@@ -1,4 +1,6 @@
-from pydantic import BaseModel
+from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
 
 
 class BaseTask(BaseModel):
@@ -7,18 +9,19 @@ class BaseTask(BaseModel):
     completed: bool = False
 
 class CreateTask(BaseTask):
-    due_at: str
+    due_at: datetime
 
 class GetTask(BaseTask):
-    created_at: str
-    completed_at: str
-    due_at: str
+    created_at: datetime
+    completed_at: datetime | None
+    due_at: datetime | None
+    model_config = ConfigDict(from_attributes=True)
 
-class UpdateTask(BaseTask):
+class UpdateTask(BaseModel):
     title: str | None = None
     description: str | None = None
     completed: bool | None = None
-    due_at: str | None = None
+    due_at: datetime | None = None
 
 class DeleteTask(BaseTask):
     pass
