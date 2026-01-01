@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Annotated
 
 from fastapi import HTTPException, Path, Depends
@@ -32,6 +33,8 @@ async def get_task_by_id( task_id: Annotated[int, Path], session: AsyncSession =
     raise HTTPException(status_code=404, detail=f"Task with id:{task_id} not found")
 
 async def patch_task(session: AsyncSession, update_task: UpdateTask, task: Task) -> Task:
+    if update_task.completed:
+        setattr(task, "completed_at", datetime.now())
     for k, v in update_task.model_dump(exclude_unset=True).items():
         setattr(task, k, v)
     await session.commit()
@@ -40,10 +43,13 @@ async def patch_task(session: AsyncSession, update_task: UpdateTask, task: Task)
 
 async def patch_completed_task(session: AsyncSession, is_completed: bool, task: Task):
     setattr(task, "completed", is_completed)
+    if is_completed:
+        setattr(task, "completed_at", datetime.now())
     await session.commit()
     await session.refresh(task)
     return task
 
 async def delete_task(session: AsyncSession, task: Task) -> None:
     await session.delete(task)
+    await session.commit()
 

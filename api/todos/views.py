@@ -24,6 +24,10 @@ async def get_task(task_id: int, session: AsyncSession = Depends(db_helper.sessi
 async def patch_task(update_task: UpdateTask, session: AsyncSession = Depends(db_helper.session_dependency), task: Task = Depends(get_task_by_id)):
     return await crud.patch_task(session=session, update_task=update_task, task=task)
 
+@router.patch("/{task_id}/completed")
+async def patch_completed_task(session: AsyncSession = Depends(db_helper.session_dependency), task: Task = Depends(get_task_by_id)):
+    return await crud.patch_completed_task(session=session, task=task, is_completed=True)
+
 @router.delete("/{task_id}")
 async def delete_task(session: AsyncSession = Depends(db_helper.session_dependency), task: Task = Depends(get_task_by_id)) -> None:
     await crud.delete_task(session=session, task=task)
