@@ -1,4 +1,6 @@
-from fastapi import HTTPException
+from typing import Annotated
+
+from fastapi import HTTPException, Path
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.engine import Result
@@ -9,8 +11,8 @@ from core.models.tasks import Task
 async def create_task(session: AsyncSession, task_in: CreateTask):
     task = Task(**task_in.model_dump())
     session.add(task)
-    await session.commit()
     await session.refresh(task)
+    await session.commit()
     return task
 
 async def get_all_tasks(session: AsyncSession) -> list[Task]:
@@ -22,7 +24,7 @@ async def get_all_tasks(session: AsyncSession) -> list[Task]:
 async def get_task(session: AsyncSession, task_id: int):
     return await session.get(Task, task_id)
 
-async def get_task_by_id(session: AsyncSession, task_id: int):
+async def get_task_by_id(session: AsyncSession, task_id: Annotated[int, Path]):
     task = get_task(session=session, task_id=task_id)
     if task is not None:
         return task
@@ -36,10 +38,8 @@ async def patch_task(session: AsyncSession, update_task: UpdateTask, task: Task)
 
 async def patch_completed_task(session: AsyncSession, is_completed: bool, task: Task):
     setattr(task, "completed", is_completed)
-    await session.commit()
     return task
 
 async def delete_task(session: AsyncSession, task: Task) -> None:
     await session.delete(task)
-    await session.commit()
 
