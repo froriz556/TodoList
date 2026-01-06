@@ -6,6 +6,6 @@ class Base(DeclarativeBase):
 
     @declared_attr
     def __tablename__(cls):
-        return cls.__name__+"s"
+        return cls.__name__.lower() + "s"
 
     id: Mapped[int] = mapped_column(primary_key=True)

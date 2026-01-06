@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from core.models.users import User
+from core.security import get_current_user
 from .crud import get_task_by_id
 from api.todos.schemas import CreateTask, UpdateTask, GetTask
 from core.models import Task
@@ -14,22 +16,27 @@ router = APIRouter()
 async def get_all_tasks(
     session: AsyncSession = Depends(db_helper.session_dependency),
     order_by: str = "created_at",
+    user: User = Depends(get_current_user),
 ):
-    return await crud.get_all_tasks(session=session, order_by=order_by)
+    return await crud.get_all_tasks(session=session, order_by=order_by, user=user)
 
 
 @router.post("/", status_code=201)
 async def create_task(
-    task: CreateTask, session: AsyncSession = Depends(db_helper.session_dependency)
+    task: CreateTask,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(get_current_user),
 ):
-    return await crud.create_task(session=session, task_in=task)
+    return await crud.create_task(session=session, task_in=task, user=user)
 
 
 @router.get("/{task_id}")
 async def get_task(
-    task_id: int, session: AsyncSession = Depends(db_helper.session_dependency)
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(get_current_user),
 ):
-    return await crud.get_task_by_id(task_id=task_id, session=session)
+    return await crud.get_task_by_id(task_id=task_id, session=session, user=user)
 
 
 @router.patch("/{task_id}", response_model=GetTask)
@@ -41,7 +48,7 @@ async def patch_task(
     return await crud.patch_task(session=session, update_task=update_task, task=task)
 
 
-@router.post("/{task_id}/completed", status_code=201)
+@router.post("/{task_id}/completed", status_code=204)
 async def patch_completed_task(
     session: AsyncSession = Depends(db_helper.session_dependency),
     task: Task = Depends(get_task_by_id),

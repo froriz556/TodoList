@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.auth.schemas import UserCreate, UserLogin, UserResponse
+from api.auth.schemas import UserCreate, UserLogin, UserResponse, TokenResponse
 from api.auth.service import get_user_by_username, create_new_user, authenticate
 from core.models import db_helper
 
@@ -19,10 +20,14 @@ async def register(
     return await create_new_user(session, user_in)
 
 
-@router.post("/login", response_model=None)
+@router.post("/login", response_model=TokenResponse)
 async def login(
-    user_in: UserLogin,
+    # user_in: UserLogin,
+    form_data: OAuth2PasswordRequestForm = Depends(),  # в том числе
     session: AsyncSession = Depends(db_helper.session_dependency),
 ):
+    user_in = UserLogin(
+        email=form_data.username, password=form_data.password
+    )  # Для тестирования в OpenAPI
     token = await authenticate(session=session, user_in=user_in)
-    return {"access_token": token}
+    return {"access_token": token, "token_type": "bearer"}

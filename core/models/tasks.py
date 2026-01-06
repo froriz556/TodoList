@@ -30,5 +30,8 @@ class Task(Base):
     completed_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), nullable=True
     )
-    # user_id: Mapped[int] = mapped_column(ForeignKey("User.id"))
-    # user: Mapped["User"] = relationship(back_populates="tasks")
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    user: Mapped["User"] = relationship(back_populates="tasks")

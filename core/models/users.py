@@ -19,4 +19,4 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
-    # tasks: Mapped[list["Task"]] = relationship(back_populates="user")
+    tasks: Mapped[list["Task"]] = relationship(back_populates="user")
