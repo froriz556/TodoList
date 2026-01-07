@@ -2,7 +2,7 @@ import datetime
 import os
 
 import jwt
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, Cookie
 from fastapi.security import OAuth2PasswordBearer
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -16,9 +16,9 @@ ALGORITHM = os.getenv("ALGORITHM")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def create_jwt_token(user_id: int):
+def create_jwt_token(user_id: int, time_in_minutes: int = 15):
     now = datetime.datetime.now(datetime.timezone.utc)
-    exp = now + datetime.timedelta(minutes=15)
+    exp = now + datetime.timedelta(minutes=time_in_minutes)
     payload = {
         "sub": str(user_id),
         "iat": now,
@@ -63,3 +63,17 @@ async def get_current_user(
     if user is None or not user.is_active:
         raise HTTPException(status_code=401, detail="User not found or inactive")
     return user
+
+
+def token_refresh(refresh_token: str | None = Cookie(default=None)):
+    if not refresh_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Refresh token missing",
+        )
+    payload = decode_jwt_token(refresh_token)
+    if payload.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Invalid token type")
+    user_id = int(payload.get("sub"))
+    new_access_token = create_jwt_token(user_id=user_id)
+    return {"access_token": new_access_token, "token_type": "bearer"}

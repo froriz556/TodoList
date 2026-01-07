@@ -41,3 +41,8 @@ async def authenticate(session: AsyncSession, user_in: UserLogin):
     if not verify_password(password=user_in.password, password_hash=user.password_hash):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     return create_jwt_token(user.id)
+
+
+async def create_refresh_token(session: AsyncSession, user_in: UserLogin):
+    user = await get_user_by_username(session=session, username=user_in.email)
+    return create_jwt_token(user.id, time_in_minutes=10080)
