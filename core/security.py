@@ -16,11 +16,12 @@ ALGORITHM = os.getenv("ALGORITHM")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 
-def create_jwt_token(user_id: int, time_in_minutes: int = 15):
+def create_jwt_token(user_id: int, token_type: str, time_in_minutes: int = 15):
     now = datetime.datetime.now(datetime.timezone.utc)
     exp = now + datetime.timedelta(minutes=time_in_minutes)
     payload = {
         "sub": str(user_id),
+        "token_type": token_type,
         "iat": now,
         "exp": exp,
     }
@@ -72,8 +73,8 @@ def token_refresh(refresh_token: str | None = Cookie(default=None)):
             detail="Refresh token missing",
         )
     payload = decode_jwt_token(refresh_token)
-    if payload.get("type") != "refresh":
+    if payload.get("token_type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid token type")
     user_id = int(payload.get("sub"))
-    new_access_token = create_jwt_token(user_id=user_id)
-    return {"access_token": new_access_token, "token_type": "bearer"}
+    new_access_token = create_jwt_token(user_id=user_id, token_type="access")
+    return new_access_token

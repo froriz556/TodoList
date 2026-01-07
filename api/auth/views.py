@@ -43,7 +43,7 @@ async def login(
         value=refresh_token,
         max_age=60 * 60 * 24 * 7,
         httponly=True,
-        secure=True,
+        # secure=True,
         path="/auth/refresh",
     )
     return {"access_token": token, "token_type": "bearer"}
