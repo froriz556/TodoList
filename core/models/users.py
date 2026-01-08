@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 class User(Base):
     email: Mapped[str] = mapped_column(unique=True, index=True)
     password_hash: Mapped[str]
+    is_verified: Mapped[bool] = mapped_column(default=False, nullable=True)
     is_active: Mapped[bool] = mapped_column(default=True)
     created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),

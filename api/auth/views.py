@@ -2,14 +2,22 @@ from fastapi import APIRouter, HTTPException, Depends, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.auth.schemas import UserCreate, UserLogin, UserResponse, TokenResponse
+from api.auth.schemas import (
+    UserCreate,
+    UserLogin,
+    UserResponse,
+    TokenResponse,
+    VerifyEmail,
+)
 from api.auth.service import (
     get_user_by_username,
     create_new_user,
     authenticate,
     create_refresh_token,
+    create_confirm_code,
 )
 from core.models import db_helper
+from core.models.redis_helper import VerificationCodesCache, get_confirm_codes_cache
 from core.security import token_refresh
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -19,10 +27,18 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 async def register(
     user_in: UserCreate,
     session: AsyncSession = Depends(db_helper.session_dependency),
+    cache: VerificationCodesCache = Depends(get_confirm_codes_cache),
 ):
     user = await get_user_by_username(session=session, username=user_in.email)
     if user is not None:
         raise HTTPException(status_code=409, detail="User is already exist")
+    code = create_confirm_code()
+    print(code) # Для теста!
+    await cache.set(
+        email=user_in.email,
+        # value=create_confirm_code(),
+        value=code,
+    )
     return await create_new_user(session, user_in)
 
 
@@ -63,3 +79,24 @@ async def logout(response: Response):
         samesite="lax",
     )
     return {"detail": "Logged out"}
+
+
+@router.post("/verify")
+async def verify(
+    data: VerifyEmail,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    cache: VerificationCodesCache = Depends(get_confirm_codes_cache),
+):
+    key = data.email
+    stored_key = await cache.get(key)
+    if not stored_key:
+        raise HTTPException(status_code=400, detail="Confirm code expired or invalid")
+    if stored_key != data.code:
+        raise HTTPException(status_code=400, detail="Invalid code")
+    user = await get_user_by_username(session, data.email)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.is_verified = True
+    await session.commit()
+    await cache.delete(data.email)
+    return {"detail": "User is verified."}

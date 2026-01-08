@@ -5,13 +5,21 @@ from fastapi import FastAPI
 from api.todos import router as todos_router
 from api.auth import router as auth_router
 from core.models import Base, db_helper
+import core.models.redis_helper as redis_module
+from core.models.redis_helper import (
+    redis_helper,
+    VerificationCodesCache,
+)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    await redis_helper.connect()
+    redis_module.confirm_codes_cache = VerificationCodesCache(redis_helper.conn)
     async with db_helper.engine.begin() as coon:
         await coon.run_sync(Base.metadata.create_all)
     yield
+    await redis_helper.close()
 
 
 app = FastAPI(lifespan=lifespan)
