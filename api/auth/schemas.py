@@ -32,3 +32,7 @@ class TokenResponse(BaseModel):
 class VerifyEmail(BaseModel):
     email: str
     code: str
+
+
+class VerifyPassword(VerifyEmail):
+    password: str

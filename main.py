@@ -9,6 +9,7 @@ import core.models.redis_helper as redis_module
 from core.models.redis_helper import (
     redis_helper,
     VerificationCodesCache,
+    ResetCodesCache,
 )
 
 
@@ -16,6 +17,7 @@ from core.models.redis_helper import (
 async def lifespan(app: FastAPI):
     await redis_helper.connect()
     redis_module.confirm_codes_cache = VerificationCodesCache(redis_helper.conn)
+    redis_module.reset_codes_cache = ResetCodesCache(redis_helper.conn)
     async with db_helper.engine.begin() as coon:
         await coon.run_sync(Base.metadata.create_all)
     yield

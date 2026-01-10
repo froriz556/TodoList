@@ -5,13 +5,14 @@ from pydantic import EmailStr
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from api.auth.schemas import UserCreate, UserLogin
+from api.auth.schemas import UserCreate, UserLogin, VerifyPassword
 from core.models.users import User
 from core.security import (
     get_user_id_by_token,
     hashed_content,
     verify_password,
     create_jwt_token,
+    create_password_hash,
 )
 
 
@@ -54,3 +55,17 @@ async def create_refresh_token(session: AsyncSession, user_in: UserLogin):
 
 def create_confirm_code() -> str:
     return str(random.randint(100_000, 999_999))
+
+
+async def verify_confirm_codes_and_update_user(
+    code: str, code_hash: str, data: VerifyPassword, session: AsyncSession
+):
+    if verify_password(code, code_hash):
+        user = await get_user_by_username(username=data.email, session=session)
+        if user is not None and user.is_verified:
+            user.password_hash = create_password_hash(password=data.password)
+            await session.commit()
+            await session.refresh(user)
+            return {"detail": "Password was changed successful."}
+        raise HTTPException(status_code=401, detail="Invalid email")
+    raise HTTPException(status_code=401, detail="Invalid confirm code")

@@ -1,5 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends, Response, Cookie
 from fastapi.security import OAuth2PasswordRequestForm
+from pydantic import EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from api.auth.schemas import (
@@ -8,6 +9,7 @@ from api.auth.schemas import (
     UserResponse,
     TokenResponse,
     VerifyEmail,
+    VerifyPassword,
 )
 from api.auth.service import (
     get_user_by_username,
@@ -15,10 +17,17 @@ from api.auth.service import (
     authenticate,
     create_refresh_token,
     create_confirm_code,
+    verify_confirm_codes_and_update_user,
 )
 from core.models import db_helper
-from core.models.redis_helper import VerificationCodesCache, get_confirm_codes_cache
-from core.security import token_refresh
+from core.models.redis_helper import (
+    VerificationCodesCache,
+    get_confirm_codes_cache,
+    ResetCodesCache,
+    get_reset_codes_cache,
+)
+from core.models.users import User
+from core.security import token_refresh, get_current_user
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -33,7 +42,7 @@ async def register(
     if user is not None:
         raise HTTPException(status_code=409, detail="User is already exist")
     code = create_confirm_code()
-    print(code) # Для теста!
+    print(code)  # Для теста!
     await cache.set(
         email=user_in.email,
         # value=create_confirm_code(),
@@ -100,3 +109,25 @@ async def verify(
     await session.commit()
     await cache.delete(data.email)
     return {"detail": "User is verified."}
+
+
+@router.post("/password_reset/request")
+async def password_reset(
+    email: EmailStr,
+    cache: ResetCodesCache = Depends(get_reset_codes_cache),
+):
+    code = create_confirm_code()
+    print(code)
+    await cache.set(email=email, value=code)
+
+
+@router.post("/password_reset/confirm")
+async def password_confirm(
+    data: VerifyPassword,
+    cache: ResetCodesCache = Depends(get_reset_codes_cache),
+    session: AsyncSession = Depends(db_helper.session_dependency),
+):
+    stored_code = await cache.get(email=data.email)
+    return await verify_confirm_codes_and_update_user(
+        code=data.code, code_hash=stored_code, data=data, session=session
+    )
