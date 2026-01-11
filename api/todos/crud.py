@@ -23,7 +23,9 @@ async def create_task(session: AsyncSession, task_in: CreateTask, user: User):
     return task
 
 
-async def get_all_tasks(session: AsyncSession, order_by: str, user: User) -> list[Task]:
+async def get_all_tasks(
+    session: AsyncSession, order_by: str, user: User, owner_type: str = "user"
+) -> list[Task]:
     order_status = "ASC"
     field = order_by
     if order_by.startswith("-"):
@@ -32,7 +34,7 @@ async def get_all_tasks(session: AsyncSession, order_by: str, user: User) -> lis
     if field in good_fields:
         stmt = (
             select(Task)
-            .where(Task.user_id == user.id)
+            .where(Task.user_id == user.id, Task.owner_type == owner_type)
             .order_by(text(f"{field} {order_status}"))
         )
     else:
@@ -43,9 +45,13 @@ async def get_all_tasks(session: AsyncSession, order_by: str, user: User) -> lis
     return list(tasks)
 
 
-async def get_task(session: AsyncSession, task_id: int, user: User):
+async def get_task(
+    session: AsyncSession, task_id: int, user: User, owner_type: str = "user"
+):
     result = await session.execute(
-        select(Task).where(Task.id == task_id, Task.user_id == user.id)
+        select(Task).where(
+            Task.id == task_id, Task.user_id == user.id, Task.owner_type == owner_type
+        )
     )
     return result.scalar_one_or_none()
 

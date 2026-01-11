@@ -8,6 +8,8 @@ from core.models import Base
 
 if TYPE_CHECKING:
     from core.models.tasks import Task
+    from core.models.room_member import Room_Member
+    from core.models.rooms import Room
 
 
 class User(Base):
@@ -21,3 +23,8 @@ class User(Base):
         nullable=False,
     )
     tasks: Mapped[list["Task"]] = relationship(back_populates="user")
+    assigned_tasks: Mapped[list["Task"]] = relationship(
+        "Task", back_populates="assignee"
+    )
+    room_members: Mapped[list["Room_Member"]] = relationship(back_populates="user")
+    rooms: Mapped[list["Room"]] = relationship(back_populates="user")
