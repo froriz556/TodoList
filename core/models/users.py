@@ -22,9 +22,11 @@ class User(Base):
         server_default=func.now(),
         nullable=False,
     )
-    tasks: Mapped[list["Task"]] = relationship(back_populates="user")
+    tasks: Mapped[list["Task"]] = relationship(
+        back_populates="user", foreign_keys="Task.user_id"
+    )
     assigned_tasks: Mapped[list["Task"]] = relationship(
-        "Task", back_populates="assignee"
+        "Task", back_populates="assignee", foreign_keys="Task.assigned_id"
     )
     room_members: Mapped[list["Room_Member"]] = relationship(back_populates="user")
     rooms: Mapped[list["Room"]] = relationship(back_populates="user")

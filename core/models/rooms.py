@@ -18,5 +18,5 @@ class Room(Base):
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
     user: Mapped["User"] = relationship(back_populates="rooms")
-    members: Mapped[list["Room_Member"]] = relationship(back_populates="user")
+    members: Mapped[list["Room_Member"]] = relationship(back_populates="room")
     tasks: Mapped[list["Task"]] = relationship(back_populates="room")

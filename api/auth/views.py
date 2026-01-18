@@ -42,7 +42,7 @@ async def register(
     if user is not None:
         raise HTTPException(status_code=409, detail="User is already exist")
     code = create_confirm_code()
-    print(code)  # Для теста!
+    print(code, flush=True)  # Для теста!
     await cache.set(
         email=user_in.email,
         # value=create_confirm_code(),

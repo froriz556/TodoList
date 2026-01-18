@@ -1,13 +1,19 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.models.users import User
 from core.security import get_current_user
-from .crud import get_task_by_id
-from api.todos.schemas import CreateTask, UpdateTask, GetTask
+from .crud import (
+    get_task_by_id,
+    create_room_and_creator,
+    get_all_tasks_from_room,
+    create_task_in_room,
+)
+from api.todos.schemas import CreateTask, UpdateTask, GetTask, CreateRoom
 from core.models import Task
 from core.models.db_helper import db_helper
 from api.todos import crud
+from .depencies import get_current_room, get_user_as_member_of_room
 
 router = APIRouter()
 
@@ -64,3 +70,41 @@ async def delete_task(
     task: Task = Depends(get_task_by_id),
 ) -> None:
     await crud.delete_task(session=session, task=task)
+
+
+@router.post("/rooms")
+async def create_room(
+    room: CreateRoom,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(get_current_user),
+):
+    return await create_room_and_creator(session, room, user)
+
+
+@router.get("/rooms/{room_id}")
+async def get_all_tasks_from_room_with_id(
+    room_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user: User = Depends(get_current_user),
+    room_member=Depends(get_user_as_member_of_room),
+    order_by: str = "created_at",
+):
+    if not room_member:
+        raise HTTPException(status_code=403, detail="Not a room member")
+    return await get_all_tasks_from_room(session, user, room_id, order_by)
+
+
+@router.post("/rooms/{room_id}", response_model=GetTask)
+async def create_new_task_in_room(
+    task_in: CreateTask,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user=Depends(get_current_user),
+    room=Depends(get_current_room),
+    room_member=Depends(get_user_as_member_of_room),
+):
+    if not room_member:
+        raise HTTPException(status_code=403, detail="Not a room member")
+    task = await create_task_in_room(
+        session=session, user=user, room=room, task_in=task_in, room_member=room_member
+    )
+    return GetTask.model_validate(task)

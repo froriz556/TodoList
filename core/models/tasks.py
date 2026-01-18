@@ -19,7 +19,7 @@ class OwnerType(Enum):
     ROOM = "room"
 
 
-class Task(Base, UserRelationship):
+class Task(Base):
     _user_back_populates = "tasks"
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str] = mapped_column(
@@ -55,8 +55,10 @@ class Task(Base, UserRelationship):
         foreign_keys=[assigned_id],
     )
 
-    # user_id: Mapped[int] = mapped_column(
-    #     ForeignKey("users.id"),
-    #     nullable=False,
-    # )
-    # user: Mapped["User"] = relationship(back_populates="tasks")
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    user: Mapped["User"] = relationship(
+        "User", back_populates="tasks", foreign_keys=[user_id]
+    )

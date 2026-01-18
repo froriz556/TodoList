@@ -28,4 +28,4 @@ class Room_Member(Base, UserRelationship):
         TIMESTAMP, server_default=func.now(), nullable=False
     )
     room_id: Mapped["int"] = mapped_column(ForeignKey("rooms.id"))
-    room: Mapped["Room"] = relationship(back_populates="room_members")
+    room: Mapped["Room"] = relationship(back_populates="members")
