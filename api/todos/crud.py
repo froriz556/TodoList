@@ -202,3 +202,79 @@ async def create_task_in_room(
         await session.refresh(task)
         return task
     raise HTTPException(status_code=403, detail="Doesn't have permissions")
+
+
+async def only_complete_task_in_room(
+    session: AsyncSession, user: User, room: Room, task_id: int
+):
+    task = await get_task(
+        session=session,
+        task_id=task_id,
+        user=user,
+        owner_type=OwnerType.ROOM,
+        room_id=room.id,
+    )
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    setattr(task, "completed", True)
+    setattr(task, "completed_at", datetime.now())
+    await session.commit()
+    await session.refresh(task)
+    return task
+
+
+async def patch_task_in_room(
+    session: AsyncSession,
+    user: User,
+    room: Room,
+    room_member: Room_Member,
+    task_in: UpdateTask,
+    task_id: int,
+):
+    if room_member.role == Roles.MEMBER:
+        raise HTTPException(status_code=403, detail="Doesn't have permissions")
+    task = await get_task(
+        session, task_id, user, room_id=room.id, owner_type=OwnerType.ROOM
+    )
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await patch_task(session=session, task=task, update_task=task_in)
+    return task
+
+
+async def accept_task(
+    session: AsyncSession,
+    user: User,
+    room: Room,
+    task_id: int,
+):
+    task = await get_task(
+        session, task_id, user, owner_type=OwnerType.ROOM, room_id=room.id
+    )
+    if task.assigned_id is not None:
+        raise HTTPException(status_code=409, detail="Task is already accept")
+    task.assignee = user
+    await session.commit()
+    await session.refresh(task)
+    return task
+
+
+async def delete_task_in_room(
+    session: AsyncSession,
+    room_member: Room_Member,
+    user: User,
+    task_id: int,
+    room: Room,
+):
+    if room_member.role == Roles.MEMBER:
+        raise HTTPException(status_code=403, detail="Doesn't have permissions")
+    task = await get_task(
+        session=session,
+        task_id=task_id,
+        user=User,
+        owner_type=OwnerType.ROOM,
+        room_id=room.id,
+    )
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    await delete_task(session=session, task=task)

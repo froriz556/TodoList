@@ -8,6 +8,10 @@ from .crud import (
     create_room_and_creator,
     get_all_tasks_from_room,
     create_task_in_room,
+    patch_task_in_room,
+    only_complete_task_in_room,
+    accept_task,
+    delete_task_in_room,
 )
 from api.todos.schemas import CreateTask, UpdateTask, GetTask, CreateRoom
 from core.models import Task
@@ -108,3 +112,57 @@ async def create_new_task_in_room(
         session=session, user=user, room=room, task_in=task_in, room_member=room_member
     )
     return GetTask.model_validate(task)
+
+
+@router.patch("/rooms/{room_id}/{task_id}")
+async def update_tasks_in_room(
+    task_id: int,
+    task_in: UpdateTask,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user=Depends(get_current_user),
+    room=Depends(get_current_room),
+    room_member=Depends(get_user_as_member_of_room),
+):
+    return await patch_task_in_room(
+        session=session,
+        user=user,
+        task_in=task_in,
+        room=room,
+        room_member=room_member,
+        task_id=task_id,
+    )
+
+
+@router.patch("/rooms/{room_id}/{task_id}/completed")
+async def complete_task_in_room(
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user=Depends(get_current_user),
+    room=Depends(get_current_room),
+):
+    return await only_complete_task_in_room(
+        session=session, user=user, room=room, task_id=task_id
+    )
+
+
+@router.patch("/rooms/{room_id}/{task_id}/accept")
+async def accept_task_in_room(
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user=Depends(get_current_user),
+    room=Depends(get_current_room),
+):
+    return await accept_task(session, user, room, task_id)
+
+
+@router.delete("/rooms/{room_id}/{task_id}")
+async def delete_tasks_in_room(
+    task_id: int,
+    session: AsyncSession = Depends(db_helper.session_dependency),
+    user=Depends(get_current_user),
+    room=Depends(get_current_room),
+    room_member=Depends(get_user_as_member_of_room),
+):
+    await delete_task_in_room(
+        session=session, room_member=room_member, room=room, user=user, task_id=task_id
+    )
