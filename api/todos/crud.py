@@ -1,5 +1,6 @@
 from datetime import datetime
 from typing import Annotated
+from uuid import uuid4
 
 from fastapi import HTTPException, Path, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,6 +9,7 @@ from sqlalchemy.engine import Result
 
 from api.todos.schemas import CreateTask, UpdateTask, CreateRoom, GetRoom
 from core.models import db_helper, Room, Room_Member
+from core.models.redis_helper import InvitesCodesCaches
 from core.models.room_member import Roles
 from core.models.tasks import Task, OwnerType
 from core.models.users import User
@@ -216,6 +218,8 @@ async def only_complete_task_in_room(
     )
     if task is None:
         raise HTTPException(status_code=404, detail="Task not found")
+    if task.assigned_id is None or not task.assigned_id == user.id:
+        raise HTTPException(status_code=403, detail="Don't accept this task")
     setattr(task, "completed", True)
     setattr(task, "completed_at", datetime.now())
     await session.commit()
@@ -278,3 +282,49 @@ async def delete_task_in_room(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     await delete_task(session=session, task=task)
+
+
+async def create_invite_link(
+    room_id: int,
+    room_member: Room_Member,
+    cache: InvitesCodesCaches,
+):
+    if room_member.role == Roles.MEMBER:
+        raise HTTPException(status_code=403, detail="Doesn't have permissions")
+    if cache.get(str(room_id)) is not None:
+        await cache.delete(str(room_id))
+    invite_code = str(uuid4())
+    await cache.set(room_id=room_id, value=invite_code)
+    return f"tasks/rooms/{room_id}/{invite_code}"
+
+
+async def join_to_room(
+    room_id: int,
+    invite_code: str,
+    user: User,
+    session: AsyncSession,
+    cache: InvitesCodesCaches,
+):
+    room = await session.get(Room, room_id)
+    if room is None:
+        raise HTTPException(status_code=404, detail="Room not found")
+    code = await cache.get(str(room_id))
+    if code is None or code != invite_code:
+        raise HTTPException(status_code=403, detail="Invalid code")
+    member = await get_room_member(session, user, room)
+    if member.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=403, detail="User already room member")
+    new_room_member = Room_Member(room_id=room_id, role=Roles.MEMBER, user=user)
+    session.add(new_room_member)
+    await session.commit()
+    await session.refresh(new_room_member)
+
+
+async def delete_invite_link(
+    room_id: int,
+    cache: InvitesCodesCaches,
+    room_member: Room_Member,
+):
+    if room_member.role not in (Roles.ADMIN, Roles.CREATOR):
+        raise HTTPException(status_code=403, detail="Doesn't have permissions")
+    await cache.delete(str(room_id))

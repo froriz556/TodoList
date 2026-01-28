@@ -57,8 +57,16 @@ class ResetCodesCache(VerificationCodesCache):
         await self._redis.set(self._key(email), hashed_value, ttl)
 
 
+class InvitesCodesCaches(VerificationCodesCache):
+    KEY_PREFIX = "invite_code"
+
+    async def set(self, room_id: int, value: str, ttl: int = 60 * 60 * 24):
+        await self._redis.set(self._key(str(room_id)), value, ttl)
+
+
 confirm_codes_cache = None  # type: VerificationCodesCache | None
 reset_codes_cache = None  # type: ResetCodesCache | None
+invites_codes_cache = None  # type: InvitesCodesCaches | None
 
 
 def get_confirm_codes_cache() -> "VerificationCodesCache":
@@ -71,3 +79,9 @@ def get_reset_codes_cache() -> "ResetCodesCache":
     if reset_codes_cache is None:
         raise RuntimeError("Cache is not initialized yet")
     return reset_codes_cache
+
+
+def get_invites_codes_cache() -> "InvitesCodesCaches":
+    if invites_codes_cache is None:
+        raise RuntimeError("Cache is not initialized yet")
+    return invites_codes_cache

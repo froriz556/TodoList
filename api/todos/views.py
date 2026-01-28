@@ -1,6 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
+from core.models.redis_helper import get_invites_codes_cache
 from core.models.users import User
 from core.security import get_current_user
 from .crud import (
@@ -155,7 +157,7 @@ async def accept_task_in_room(
     return await accept_task(session, user, room, task_id)
 
 
-@router.delete("/rooms/{room_id}/{task_id}")
+@router.delete("/rooms/{room_id}/{task_id: int}")
 async def delete_tasks_in_room(
     task_id: int,
     session: AsyncSession = Depends(db_helper.session_dependency),
@@ -165,4 +167,45 @@ async def delete_tasks_in_room(
 ):
     await delete_task_in_room(
         session=session, room_member=room_member, room=room, user=user, task_id=task_id
+    )
+
+
+@router.post("/rooms/{room_id}/create_invite_link")
+async def create_invite_link(
+    room_id: int,
+    user=Depends(get_current_user),
+    room=Depends(get_current_room),
+    room_member=Depends(get_user_as_member_of_room),
+    invites_codes_cache=Depends(get_invites_codes_cache),
+):
+    return await crud.create_invite_link(
+        room_id=room_id, room_member=room_member, cache=invites_codes_cache
+    )
+
+
+@router.post("/rooms/{room_id}/{invite_code}", status_code=204)
+async def join_to_room(
+    room_id: int,
+    invite_code: str,
+    user=Depends(get_current_user),
+    invites_codes_cache=Depends(get_invites_codes_cache),
+    session=Depends(db_helper.session_dependency),
+):
+    await crud.join_to_room(
+        room_id=room_id,
+        invite_code=invite_code,
+        user=user,
+        cache=invites_codes_cache,
+        session=session,
+    )
+
+
+@router.delete("/rooms/{room_id}/delete_invite_link", status_code=HTTP_204_NO_CONTENT)
+async def delete_invite_link(
+    room_id: int,
+    room_member=Depends(get_user_as_member_of_room),
+    invites_codes_cache=Depends(get_invites_codes_cache),
+):
+    await crud.delete_invite_link(
+        room_id=room_id, cache=invites_codes_cache, room_member=room_member
     )
